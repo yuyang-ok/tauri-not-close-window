@@ -1,0 +1,1 @@
+# tauri-not-close-window
