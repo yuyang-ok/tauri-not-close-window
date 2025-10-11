@@ -3,9 +3,9 @@
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
-use std::ops::DerefMut;
+use std::{backtrace::Backtrace, ops::DerefMut, panic};
 
-use tauri::ipc::Channel;
+use tauri::{ipc::Channel, WebviewUrl, WebviewWindowBuilder};
 pub fn log_channel_store() -> &'static std::sync::Mutex<Option<Channel<String>>> {
     static X: std::sync::Mutex<Option<Channel<String>>> = std::sync::Mutex::new(None);
     &X
@@ -61,7 +61,7 @@ impl log::Log for AppLogger {
     fn flush(&self) {}
 }
 
-fn is_send<T: Send>(x: T) {}
+fn is_send<T: Send>(_x: T) {}
 
 #[allow(dead_code)]
 fn logger_test() {
@@ -84,11 +84,38 @@ fn log_channel(on_event: Channel<String>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     logger_test();
+
+    let setup = move |app: &mut tauri::App| {
+        {
+            let old = panic::take_hook();
+            let handler = app.handle().clone();
+            panic::set_hook(Box::new(move |info| {
+                let backtrace = Backtrace::capture();
+                println!("panic here:{}", backtrace);
+                if let Err(err) = WebviewWindowBuilder::new(
+                    &handler,
+                    "backend_crash",
+                    WebviewUrl::App(format!("backend_crash.html").into()),
+                )
+                .title("Backend Crash")
+                .inner_size(800f64, 600f64)
+                .maximized(true)
+                .build()
+                {
+                    //  can use log here
+                    println!("create backend crash window failed:{}", err);
+                }
+                old(info);
+            }));
+        }
+        Ok(())
+    };
     log::set_boxed_logger(Box::new(AppLogger {})).unwrap();
     log::set_max_level(log::LevelFilter::Trace);
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![greet, log_channel])
+        .setup(setup)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
