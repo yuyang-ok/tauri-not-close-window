@@ -102,7 +102,7 @@ pub fn run() {
                 .maximized(true)
                 .build()
                 {
-                    //  can use log here
+                    //  can't use log here
                     println!("create backend crash window failed:{}", err);
                 }
                 old(info);
