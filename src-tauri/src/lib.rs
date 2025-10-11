@@ -46,7 +46,11 @@ impl log::Log for AppLogger {
         let mut sender = log_channel_store().lock().unwrap();
         match sender.deref_mut() {
             Some(x) => {
-                x.send(s).unwrap();
+                if let Err(err) = x.send(s) {
+                    println!("send error:{}", err);
+
+                    *sender = None;
+                }
             }
             None => {
                 // println!("no log channel found");
@@ -56,6 +60,8 @@ impl log::Log for AppLogger {
 
     fn flush(&self) {}
 }
+
+fn is_send<T: Send>(x: T) {}
 
 #[allow(dead_code)]
 fn logger_test() {
@@ -71,7 +77,8 @@ fn logger_test() {
 
 #[tauri::command]
 fn log_channel(on_event: Channel<String>) {
-    *log_channel_store().lock().unwrap() = Some(on_event);
+    *log_channel_store().lock().unwrap() = Some(on_event.clone());
+    is_send(on_event.clone());
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
