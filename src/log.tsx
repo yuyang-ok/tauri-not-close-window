@@ -6,9 +6,9 @@ function Log() {
   useEffect(() => {
     const onEvent = new Channel<string>();
     onEvent.onmessage = (message) => {
-      console.log(`got download event `, message);
+      console.log(`got log_channel event `, message);
     };
-    invoke("download", {
+    invoke("log_channel", {
       onEvent,
     });
   }, []);
