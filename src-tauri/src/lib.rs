@@ -90,22 +90,8 @@ pub fn run() {
             let old = panic::take_hook();
             let handler = app.handle().clone();
             panic::set_hook(Box::new(move |info| {
-                let backtrace = Backtrace::capture();
-                println!("panic here:{}", backtrace);
-                if let Err(err) = WebviewWindowBuilder::new(
-                    &handler,
-                    "backend_crash",
-                    WebviewUrl::App(format!("backend_crash.html").into()),
-                )
-                .title("Backend Crash")
-                .inner_size(800f64, 600f64)
-                .maximized(true)
-                .build()
-                {
-                    //  can't use log here
-                    println!("create backend crash window failed:{}", err);
-                }
-                old(info);
+                println!("panic here:{}", std::backtrace::Backtrace::capture());
+                std::process::exit(101);
             }));
         }
         Ok(())
